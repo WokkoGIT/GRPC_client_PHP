@@ -12,10 +12,6 @@ $userID = 5678;
 $orderID = 16875465;
 $refundAddress = "3HWDCmMg4s7NdPvbKZi6AvMZEf1RzMpKUn";
 
-//CLIENT_SECRET_KEY - верный код, имеющий доступ к возврату средств.
-//WRONG_KEY - код без доступа к возврату
-$access_KEY = getenv("CLIENT_SECRET_KEY");
-
 
 //Сервер PHP не поддерживает обработку двух сервисов одновременно
 
@@ -39,8 +35,13 @@ function greet($hostname,$name,$txid,$userID,$orderID,$refundAddress):void {
     echo $response->getGreeting() . PHP_EOL;
 }
 
-function refund ($hostname,$name,$txid,$userID,$orderID,$refundAddress,$access_KEY): void {
-
+function refund ($hostname,$name,$txid,$userID,$orderID,$refundAddress): void {
+    $unixTime = time();
+    //CLIENT_SECRET_KEY - верный код, имеющий доступ к возврату средств.
+    //WRONG_KEY - код без доступа к возврату
+    $key = getenv("CLIENT_SECRET_KEY").$unixTime;
+    $hash = md5($key,false);
+    echo $hash;
     $client = new \RefundService\RefundServiceClient($hostname, [
         'credentials' => Grpc\ChannelCredentials::createInsecure(),
     ]);
@@ -52,7 +53,11 @@ function refund ($hostname,$name,$txid,$userID,$orderID,$refundAddress,$access_K
         ->setOrderID($orderID)
         ->setTxid($txid)
         ->setRefundAddress($refundAddress)
-        ->setAccessKey($access_KEY);
+        ->setUnixTime($unixTime)
+        ->setAccessHash($hash);
+
+
+
 
     list($refundResponse, $status) = $client->refundRequest($request)->wait();
     if ($status->code !== Grpc\STATUS_OK) {
@@ -63,7 +68,7 @@ function refund ($hostname,$name,$txid,$userID,$orderID,$refundAddress,$access_K
 }
 
 //Проверка коннекта к серверу
-greet($hostname,$name,$txid,$userID,$orderID,$refundAddress);
+//greet($hostname,$name,$txid,$userID,$orderID,$refundAddress);
 
 //Запрос на возврат транзакции
-refund($hostname, $name,$txid,$userID,$orderID,$refundAddress,$access_KEY);
+refund($hostname, $name,$txid,$userID,$orderID,$refundAddress);
